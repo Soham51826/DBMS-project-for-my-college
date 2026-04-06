@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElectroStore - Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="brand">ELECTRO<span>STORE</span></div>
+        <ul class="nav-links">
+            <li><a href="dashboard.html" class="active">Dashboard</a></li>
+            <li><a href="products.html">Products</a></li>
+            <li><a href="inventory.html">Inventory</a></li>
+            <li><a href="orders.html">Orders</a></li>
+            <li><a href="customers.html">Customers</a></li>
+            <li><a href="suppliers.html">Suppliers</a></li>
+            <li><a href="reports.html">Reports</a></li>
+            <li><a href="#" onclick="logout()" style="color:var(--secondary);margin-top:2rem;">Logout</a></li>
+        </ul>
+    </aside>
+    
+    <main class="main-content">
+        <div class="flex-between mb-2">
+            <h1>SYSTEM DASHBOARD</h1>
+            <div id="user-info" class="badge badge-success"></div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="card stat-card">
+                <h3>TOTAL PRODUCTS</h3>
+                <div class="value" id="stat-products">-</div>
+            </div>
+            <div class="card stat-card">
+                <h3>TOTAL ORDERS</h3>
+                <div class="value" id="stat-orders">-</div>
+            </div>
+            <div class="card stat-card" style="border-color: var(--secondary);">
+                <h3 style="color: var(--secondary);">LOW STOCK ALERTS</h3>
+                <div class="value" id="stat-low-stock" style="color: var(--secondary); text-shadow: 0 0 10px var(--secondary-glow);">-</div>
+            </div>
+            <div class="card stat-card">
+                <h3>TOTAL REVENUE</h3>
+                <div class="value" id="stat-revenue">-</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>RECENT INVENTORY ACTIVITY</h2>
+            <div class="table-container mt-2">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>DATE</th>
+                            <th>PRODUCT ID</th>
+                            <th>TYPE</th>
+                            <th>QUANTITY</th>
+                            <th>REASON</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activity-list">
+                        <!-- Data injected via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        function logout() {
+            localStorage.clear();
+            window.location.href = 'index.html';
+        }
+        
+        async function loadDashboard() {
+            try {
+                const user = JSON.parse(localStorage.getItem('user'));
+                if(user) document.getElementById('user-info').textContent = `OP: ${user.username} [${user.role}]`;
+
+                const data = await api.get('/dashboard');
+                document.getElementById('stat-products').textContent = data.totalProducts;
+                document.getElementById('stat-orders').textContent = data.totalOrders;
+                document.getElementById('stat-low-stock').textContent = data.lowStockItems;
+                document.getElementById('stat-revenue').textContent = utils.formatCurrency(data.totalRevenue);
+
+                const tbody = document.getElementById('activity-list');
+                tbody.innerHTML = data.recentActivity.map(act => `
+                    <tr>
+                        <td>${utils.formatDate(act.created_at)}</td>
+                        <td>SYS-PRD-${act.product_id}</td>
+                        <td><span class="badge ${act.change_type === 'addition' ? 'badge-success' : (act.change_type === 'reduction' ? 'badge-danger' : 'badge-warning')}">${act.change_type}</span></td>
+                        <td>${act.quantity_changed}</td>
+                        <td>${act.reason || 'N/A'}</td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error(err);
+                utils.showToast('Failed to sync dashboard data', 'error');
+            }
+        }
+        loadDashboard();
+    </script>
+</body>
+</html>

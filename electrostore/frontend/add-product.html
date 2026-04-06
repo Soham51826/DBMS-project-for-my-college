@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElectroStore - Add Product</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="brand">ELECTRO<span>STORE</span></div>
+        <ul class="nav-links">
+            <li><a href="dashboard.html">Dashboard</a></li>
+            <li><a href="products.html" class="active">Products</a></li>
+            <li><a href="inventory.html">Inventory</a></li>
+            <li><a href="orders.html">Orders</a></li>
+            <li><a href="customers.html">Customers</a></li>
+            <li><a href="suppliers.html">Suppliers</a></li>
+            <li><a href="reports.html">Reports</a></li>
+            <li><a href="#" onclick="logout()" style="color:var(--secondary);margin-top:2rem;">Logout</a></li>
+        </ul>
+    </aside>
+    
+    <main class="main-content">
+        <div class="flex-between mb-2">
+            <h1>ADD NEW PRODUCT</h1>
+            <a href="products.html" class="btn btn-secondary">BACK TO DATABASE</a>
+        </div>
+
+        <div class="card">
+            <form id="addProductForm">
+                <div class="stats-grid">
+                    <div class="form-group">
+                        <label>SKU</label>
+                        <input type="text" id="sku" required>
+                    </div>
+                    <div class="form-group">
+                        <label>NAME</label>
+                        <input type="text" id="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>CATEGORY</label>
+                        <select id="category" required>
+                            <option value="Laptops">Laptops</option>
+                            <option value="Monitors">Monitors</option>
+                            <option value="Accessories">Accessories</option>
+                            <option value="Components">Components</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>DESCRIPTION</label>
+                    <textarea id="description" rows="3"></textarea>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="form-group">
+                        <label>PRICE (USD)</label>
+                        <input type="number" step="0.01" id="price" required>
+                    </div>
+                    <div class="form-group">
+                        <label>COST (USD)</label>
+                        <input type="number" step="0.01" id="cost" required>
+                    </div>
+                    <div class="form-group">
+                        <label>INITIAL STOCK</label>
+                        <input type="number" id="stock" value="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>MIN STOCK LEVEL</label>
+                        <input type="number" id="min_stock_level" value="10" required>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn mt-2">REGISTER PRODUCT</button>
+            </form>
+        </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+
+        document.getElementById('addProductForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                sku: document.getElementById('sku').value,
+                name: document.getElementById('name').value,
+                category: document.getElementById('category').value,
+                description: document.getElementById('description').value,
+                price: parseFloat(document.getElementById('price').value),
+                cost: parseFloat(document.getElementById('cost').value),
+                stock: parseInt(document.getElementById('stock').value),
+                min_stock_level: parseInt(document.getElementById('min_stock_level').value)
+            };
+
+            try {
+                await api.post('/products', data);
+                utils.showToast('Product Successfully Registered');
+                setTimeout(() => window.location.href = 'products.html', 1000);
+            } catch (err) {
+                utils.showToast('Error registering product', 'error');
+            }
+        });
+    </script>
+</body>
+</html>

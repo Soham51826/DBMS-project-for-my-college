@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElectroStore - Inventory</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="brand">ELECTRO<span>STORE</span></div>
+        <ul class="nav-links">
+            <li><a href="dashboard.html">Dashboard</a></li>
+            <li><a href="products.html">Products</a></li>
+            <li><a href="inventory.html" class="active">Inventory</a></li>
+            <li><a href="orders.html">Orders</a></li>
+            <li><a href="customers.html">Customers</a></li>
+            <li><a href="suppliers.html">Suppliers</a></li>
+            <li><a href="reports.html">Reports</a></li>
+            <li><a href="#" onclick="logout()" style="color:var(--secondary);margin-top:2rem;">Logout</a></li>
+        </ul>
+    </aside>
+    
+    <main class="main-content">
+        <div class="flex-between mb-2">
+            <h1>INVENTORY MANAGEMENT</h1>
+        </div>
+
+        <div class="card mb-2" id="adjustment-panel" style="display: none; border-color: var(--primary);">
+            <h2 id="adj-title" style="color: var(--primary);">ADJUST STOCK</h2>
+            <div class="flex-between gap-1">
+                <input type="hidden" id="adj-id">
+                <select id="adj-type" style="flex: 1;">
+                    <option value="addition">Addition (+)</option>
+                    <option value="reduction">Reduction (-)</option>
+                    <option value="adjustment">Set Absolute Value</option>
+                </select>
+                <input type="number" id="adj-qty" placeholder="Quantity" style="flex: 1;" required>
+                <input type="text" id="adj-reason" placeholder="Reason (Optional)" style="flex: 2;">
+                <button class="btn" onclick="submitAdjustment()">CONFIRM</button>
+                <button class="btn btn-secondary" onclick="closeAdjustment()">CANCEL</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>PRODUCT NAME</th>
+                            <th>CURRENT STOCK</th>
+                            <th>MIN LEVEL</th>
+                            <th>STATUS</th>
+                            <th>ACTION</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventory-list"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+
+        async function loadInventory() {
+            try {
+                const products = await api.get('/products');
+                const tbody = document.getElementById('inventory-list');
+                tbody.innerHTML = products.map(p => {
+                    let status = '<span class="badge badge-success">OPTIMAL</span>';
+                    if (p.stock <= p.min_stock_level) {
+                        status = '<span class="badge badge-danger">CRITICAL LOW</span>';
+                    } else if (p.stock <= p.min_stock_level * 1.5) {
+                        status = '<span class="badge badge-warning">WARNING</span>';
+                    }
+                    return `
+                        <tr>
+                            <td style="font-family: 'Orbitron', sans-serif; color: var(--primary);">${p.sku}</td>
+                            <td>${p.name}</td>
+                            <td style="font-size:1.2rem; font-weight:bold;">${p.stock}</td>
+                            <td>${p.min_stock_level}</td>
+                            <td>${status}</td>
+                            <td><button class="btn btn-accent" style="padding: 0.3rem 0.8rem; font-size: 0.8rem;" onclick="openAdjustment(${p.id}, '${p.sku}')">ADJUST</button></td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (err) {
+                utils.showToast('Failed to load inventory', 'error');
+            }
+        }
+
+        function openAdjustment(id, sku) {
+            document.getElementById('adjustment-panel').style.display = 'block';
+            document.getElementById('adj-title').textContent = `ADJUST STOCK: ${sku}`;
+            document.getElementById('adj-id').value = id;
+        }
+
+        function closeAdjustment() {
+            document.getElementById('adjustment-panel').style.display = 'none';
+        }
+
+        async function submitAdjustment() {
+            const id = document.getElementById('adj-id').value;
+            const type = document.getElementById('adj-type').value;
+            const qty = parseInt(document.getElementById('adj-qty').value);
+            const reason = document.getElementById('adj-reason').value;
+            const user = JSON.parse(localStorage.getItem('user'));
+
+            if (!qty || qty <= 0) return utils.showToast('Invalid quantity', 'error');
+
+            try {
+                await api.post(`/products/${id}/adjust`, { change_type: type, quantity: qty, reason, user_id: user ? user.id : null });
+                utils.showToast('Stock Adjusted Successfully');
+                closeAdjustment();
+                loadInventory();
+            } catch (e) {
+                utils.showToast('Error adjusting stock', 'error');
+            }
+        }
+
+        loadInventory();
+    </script>
+</body>
+</html>

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElectroStore - Reports</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="brand">ELECTRO<span>STORE</span></div>
+        <ul class="nav-links">
+            <li><a href="dashboard.html">Dashboard</a></li>
+            <li><a href="products.html">Products</a></li>
+            <li><a href="inventory.html">Inventory</a></li>
+            <li><a href="orders.html">Orders</a></li>
+            <li><a href="customers.html">Customers</a></li>
+            <li><a href="suppliers.html">Suppliers</a></li>
+            <li><a href="reports.html" class="active">Reports</a></li>
+            <li><a href="#" onclick="logout()" style="color:var(--secondary);margin-top:2rem;">Logout</a></li>
+        </ul>
+    </aside>
+    
+    <main class="main-content">
+        <div class="flex-between mb-2">
+            <h1>SYSTEM INTELLIGENCE REPORTS</h1>
+        </div>
+
+        <div class="stats-grid mb-2">
+            <div class="card">
+                <h2>TOTAL INVENTORY RETAIL VALUE</h2>
+                <div class="value mt-2" id="val-retail" style="font-size: 3rem; color: #00ff88;">-</div>
+            </div>
+            <div class="card">
+                <h2>TOTAL INVENTORY COST</h2>
+                <div class="value mt-2" id="val-cost" style="font-size: 3rem; color: var(--text-main);">0.00</div>
+            </div>
+            <div class="card">
+                <h2>PROJECTED PROFIT</h2>
+                <div class="value mt-2" id="val-profit" style="font-size: 3rem; color: var(--accent);">0.00</div>
+            </div>
+        </div>
+
+        <div class="card mb-2" style="border-color: var(--secondary);">
+            <h2 style="color: var(--secondary);">CRITICAL LOW STOCK</h2>
+            <div class="table-container mt-2">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>NAME</th>
+                            <th>STOCK</th>
+                            <th>THRESHOLD</th>
+                        </tr>
+                    </thead>
+                    <tbody id="low-stock-list"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>SALES METRICS (RECENT)</h2>
+            <div class="table-container mt-2">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>DATE</th>
+                            <th>ORDERS PROCESSED</th>
+                            <th>REVENUE GENERATED</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sales-list"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+
+        async function loadReports() {
+            try {
+                const [val, lowStock, sales] = await Promise.all([
+                    api.get('/reports/inventory-value'),
+                    api.get('/reports/low-stock'),
+                    api.get('/reports/sales')
+                ]);
+
+                // Inventory Value
+                const retail = parseFloat(val.total_retail_value || 0);
+                const cost = parseFloat(val.total_cost_value || 0);
+                document.getElementById('val-retail').textContent = utils.formatCurrency(retail);
+                document.getElementById('val-cost').textContent = utils.formatCurrency(cost);
+                document.getElementById('val-profit').textContent = utils.formatCurrency(retail - cost);
+
+                // Low Stock
+                const lowStockTbody = document.getElementById('low-stock-list');
+                if(lowStock.length > 0) {
+                    lowStockTbody.innerHTML = lowStock.map(i => `
+                        <tr>
+                            <td style="color:var(--primary);">${i.sku}</td>
+                            <td>${i.name}</td>
+                            <td style="color:var(--secondary); font-weight:bold; font-size:1.2rem;">${i.stock}</td>
+                            <td>${i.min_stock_level}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    lowStockTbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No critical stock issues detected.</td></tr>';
+                }
+
+                // Sales
+                const salesTbody = document.getElementById('sales-list');
+                if(sales.length > 0) {
+                    salesTbody.innerHTML = sales.map(s => {
+                        const d = new Date(s.date).toLocaleDateString();
+                        return `
+                            <tr>
+                                <td>${d}</td>
+                                <td>${s.total_orders}</td>
+                                <td style="color: #00ff88; font-weight:bold;">${utils.formatCurrency(s.total_revenue)}</td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    salesTbody.innerHTML = '<tr><td colspan="3" style="text-align:center;">No recent sales data.</td></tr>';
+                }
+
+            } catch (err) {
+                utils.showToast('Failed to compile intelligence reports', 'error');
+            }
+        }
+
+        loadReports();
+    </script>
+</body>
+</html>

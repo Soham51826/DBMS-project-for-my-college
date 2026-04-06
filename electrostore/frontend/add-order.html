@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElectroStore - Create Order</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="brand">ELECTRO<span>STORE</span></div>
+        <ul class="nav-links">
+            <li><a href="dashboard.html">Dashboard</a></li>
+            <li><a href="products.html">Products</a></li>
+            <li><a href="inventory.html">Inventory</a></li>
+            <li><a href="orders.html" class="active">Orders</a></li>
+            <li><a href="customers.html">Customers</a></li>
+            <li><a href="suppliers.html">Suppliers</a></li>
+            <li><a href="reports.html">Reports</a></li>
+            <li><a href="#" onclick="logout()" style="color:var(--secondary);margin-top:2rem;">Logout</a></li>
+        </ul>
+    </aside>
+    
+    <main class="main-content">
+        <div class="flex-between mb-2">
+            <h1>TRANSACTION TERMINAL</h1>
+            <a href="orders.html" class="btn btn-secondary">CANCEL</a>
+        </div>
+
+        <div class="stats-grid" style="align-items: start;">
+            <div class="card" style="grid-column: span 2;">
+                <h2>CART ITEMS</h2>
+                <div class="flex-between gap-1 mb-2">
+                    <select id="product-select" style="flex:2;"></select>
+                    <input type="number" id="item-qty" value="1" min="1" style="flex:1;">
+                    <button class="btn" onclick="addToCart()">ADD</button>
+                </div>
+                
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>PRODUCT</th>
+                                <th>PRICE</th>
+                                <th>QTY</th>
+                                <th>SUBTOTAL</th>
+                                <th>DEL</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cart-body"></tbody>
+                    </table>
+                </div>
+                
+                <div class="flex-between mt-2">
+                    <h2>TOTAL:</h2>
+                    <h2 id="cart-total" style="color: var(--primary);">0.00</h2>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>CHECKOUT</h2>
+                <div class="form-group mt-2">
+                    <label>CUSTOMER</label>
+                    <select id="customer-select">
+                        <option value="">Walk-in Customer (None)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>PAYMENT METHOD</label>
+                    <select id="payment-method">
+                        <option value="Credit Card">Credit Card</option>
+                        <option value="Cash">Cash</option>
+                        <option value="Crypto">Crypto Transfer</option>
+                    </select>
+                </div>
+                <button class="btn" style="width:100%; padding:1rem; font-size:1.2rem;" onclick="processOrder()">PROCESS TRANSACTION</button>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+
+        let cart = [];
+        let productsMap = {};
+
+        async function init() {
+            try {
+                const [products, customers] = await Promise.all([
+                    api.get('/products'),
+                    api.get('/customers')
+                ]);
+                
+                const pSelect = document.getElementById('product-select');
+                products.forEach(p => {
+                    productsMap[p.id] = p;
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.textContent = `[${p.sku}] ${p.name} - $${p.price} (Stock: ${p.stock})`;
+                    if(p.stock <= 0) opt.disabled = true;
+                    pSelect.appendChild(opt);
+                });
+
+                const cSelect = document.getElementById('customer-select');
+                customers.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.textContent = c.name;
+                    cSelect.appendChild(opt);
+                });
+            } catch (err) {
+                utils.showToast('Failed to load initialization data', 'error');
+            }
+        }
+
+        function addToCart() {
+            const pid = document.getElementById('product-select').value;
+            const qty = parseInt(document.getElementById('item-qty').value);
+            if(!pid || qty <= 0) return;
+
+            const product = productsMap[pid];
+            if(qty > product.stock) {
+                return utils.showToast('Insufficient stock', 'error');
+            }
+
+            const existing = cart.find(c => c.product_id == pid);
+            if (existing) {
+                if(existing.quantity + qty > product.stock) return utils.showToast('Insufficient stock', 'error');
+                existing.quantity += qty;
+            } else {
+                cart.push({ product_id: pid, name: product.name, price: product.price, quantity: qty });
+            }
+            renderCart();
+        }
+
+        function removeFromCart(pid) {
+            cart = cart.filter(c => c.product_id != pid);
+            renderCart();
+        }
+
+        function renderCart() {
+            const tbody = document.getElementById('cart-body');
+            let total = 0;
+            tbody.innerHTML = cart.map(c => {
+                const sub = c.price * c.quantity;
+                total += sub;
+                return `
+                    <tr>
+                        <td>${c.name}</td>
+                        <td>${utils.formatCurrency(c.price)}</td>
+                        <td>${c.quantity}</td>
+                        <td>${utils.formatCurrency(sub)}</td>
+                        <td><button class="btn btn-secondary" style="padding: 0.2rem 0.5rem;" onclick="removeFromCart(${c.product_id})">X</button></td>
+                    </tr>
+                `;
+            }).join('');
+            document.getElementById('cart-total').textContent = utils.formatCurrency(total);
+        }
+
+        async function processOrder() {
+            if (cart.length === 0) return utils.showToast('Cart is empty', 'error');
+            
+            const customer_id = document.getElementById('customer-select').value;
+            const payment_method = document.getElementById('payment-method').value;
+            const user = JSON.parse(localStorage.getItem('user'));
+
+            const payload = {
+                customer_id: customer_id ? parseInt(customer_id) : null,
+                user_id: user ? user.id : null,
+                payment_method,
+                items: cart.map(c => ({ product_id: c.product_id, quantity: c.quantity, unit_price: c.price }))
+            };
+
+            try {
+                await api.post('/orders', payload);
+                utils.showToast('Transaction Completed Successfully');
+                setTimeout(() => window.location.href = 'orders.html', 1500);
+            } catch (err) {
+                utils.showToast('Transaction Failed', 'error');
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

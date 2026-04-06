@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElectroStore - Login</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body { margin: 0; justify-content: center; align-items: center; }
+        .login-container { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .login-box { width: 400px; max-width: 90%; text-align: center; }
+    </style>
+</head>
+<body>
+    <main class="login-container">
+        <div class="card login-box">
+            <div class="brand mb-2">ELECTRO<span>STORE</span></div>
+            <h2>SYSTEM ACCESS</h2>
+            <form id="loginForm">
+                <div class="form-group text-left">
+                    <label>USERNAME</label>
+                    <input type="text" id="username" required placeholder="Enter username">
+                </div>
+                <div class="form-group text-left">
+                    <label>PASSWORD</label>
+                    <input type="password" id="password" required placeholder="Enter password">
+                </div>
+                <button type="submit" class="btn" style="width: 100%;">INITIALIZE</button>
+            </form>
+            <p class="mt-2 text-muted">Don't have access? <a href="register.html">Request Clearance</a></p>
+        </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            try {
+                const res = await api.post('/users/login', { username: u, password: p });
+                localStorage.setItem('token', res.token);
+                localStorage.setItem('user', JSON.stringify(res.user));
+                utils.showToast('Access Granted');
+                setTimeout(() => window.location.href = 'dashboard.html', 1000);
+            } catch (err) {
+                utils.showToast('Access Denied: Invalid credentials', 'error');
+            }
+        });
+    </script>
+</body>
+</html>

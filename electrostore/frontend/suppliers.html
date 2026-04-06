@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElectroStore - Suppliers</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="brand">ELECTRO<span>STORE</span></div>
+        <ul class="nav-links">
+            <li><a href="dashboard.html">Dashboard</a></li>
+            <li><a href="products.html">Products</a></li>
+            <li><a href="inventory.html">Inventory</a></li>
+            <li><a href="orders.html">Orders</a></li>
+            <li><a href="customers.html">Customers</a></li>
+            <li><a href="suppliers.html" class="active">Suppliers</a></li>
+            <li><a href="reports.html">Reports</a></li>
+            <li><a href="#" onclick="logout()" style="color:var(--secondary);margin-top:2rem;">Logout</a></li>
+        </ul>
+    </aside>
+    
+    <main class="main-content">
+        <div class="flex-between mb-2">
+            <h1>SUPPLIER NETWORK</h1>
+        </div>
+
+        <div class="card mb-2" id="add-form" style="display: none; border-color: var(--primary);">
+            <h2 style="color: var(--primary);">REGISTER SUPPLIER NODE</h2>
+            <div class="stats-grid">
+                <input type="text" id="s-name" placeholder="Company Name" required>
+                <input type="text" id="s-contact" placeholder="Contact Person">
+                <input type="text" id="s-phone" placeholder="Phone Number">
+                <input type="email" id="s-email" placeholder="Email Address">
+                <input type="text" id="s-address" placeholder="Physical Address" style="grid-column: span 2;">
+            </div>
+            <div class="mt-2">
+                <button class="btn" onclick="saveSupplier()">ESTABLISH LINK</button>
+                <button class="btn btn-secondary" onclick="toggleForm()">CANCEL</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="flex-between mb-2">
+                <h2>ACTIVE SUPPLIER NODES</h2>
+                <button class="btn btn-accent" onclick="toggleForm()">ADD NODE</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>NODE ID</th>
+                            <th>COMPANY</th>
+                            <th>CONTACT</th>
+                            <th>PHONE</th>
+                            <th>EMAIL</th>
+                            <th>ACTIONS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="suppliers-list"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+        
+        function toggleForm() {
+            const form = document.getElementById('add-form');
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function loadSuppliers() {
+            try {
+                const suppliers = await api.get('/suppliers');
+                const tbody = document.getElementById('suppliers-list');
+                tbody.innerHTML = suppliers.map(s => `
+                    <tr>
+                        <td style="font-family: 'Orbitron', sans-serif;">SUP-${s.id}</td>
+                        <td style="color: var(--primary); font-weight: bold;">${s.name}</td>
+                        <td>${s.contact_person || 'N/A'}</td>
+                        <td>${s.phone || 'N/A'}</td>
+                        <td>${s.email || 'N/A'}</td>
+                        <td><button class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="deleteSupplier(${s.id})">SEVER</button></td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                utils.showToast('Failed to load supplier network', 'error');
+            }
+        }
+
+        async function saveSupplier() {
+            const data = {
+                name: document.getElementById('s-name').value,
+                contact_person: document.getElementById('s-contact').value,
+                phone: document.getElementById('s-phone').value,
+                email: document.getElementById('s-email').value,
+                address: document.getElementById('s-address').value
+            };
+            if(!data.name) return utils.showToast('Company Name is required', 'error');
+
+            try {
+                await api.post('/suppliers', data);
+                utils.showToast('Supplier Link Established');
+                toggleForm();
+                loadSuppliers();
+            } catch(e) { utils.showToast('Error establishing link', 'error'); }
+        }
+
+        async function deleteSupplier(id) {
+            if(confirm('Sever this supplier link?')) {
+                try {
+                    await api.delete(`/suppliers/${id}`);
+                    utils.showToast('Supplier Link Severed');
+                    loadSuppliers();
+                } catch(e) { utils.showToast('Error', 'error'); }
+            }
+        }
+
+        loadSuppliers();
+    </script>
+</body>
+</html>

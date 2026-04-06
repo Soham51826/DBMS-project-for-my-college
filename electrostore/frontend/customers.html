@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElectroStore - Customers</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="brand">ELECTRO<span>STORE</span></div>
+        <ul class="nav-links">
+            <li><a href="dashboard.html">Dashboard</a></li>
+            <li><a href="products.html">Products</a></li>
+            <li><a href="inventory.html">Inventory</a></li>
+            <li><a href="orders.html">Orders</a></li>
+            <li><a href="customers.html" class="active">Customers</a></li>
+            <li><a href="suppliers.html">Suppliers</a></li>
+            <li><a href="reports.html">Reports</a></li>
+            <li><a href="#" onclick="logout()" style="color:var(--secondary);margin-top:2rem;">Logout</a></li>
+        </ul>
+    </aside>
+    
+    <main class="main-content">
+        <div class="flex-between mb-2">
+            <h1>CLIENT DIRECTORY</h1>
+        </div>
+
+        <div class="card mb-2" id="add-form" style="display: none; border-color: var(--primary);">
+            <h2 style="color: var(--primary);">NEW CLIENT REGISTRATION</h2>
+            <div class="stats-grid">
+                <input type="text" id="c-name" placeholder="Full Name" required>
+                <input type="text" id="c-phone" placeholder="Phone Number">
+                <input type="email" id="c-email" placeholder="Email Address">
+                <input type="text" id="c-address" placeholder="Physical Address">
+            </div>
+            <div class="mt-2">
+                <button class="btn" onclick="saveCustomer()">SAVE CLIENT</button>
+                <button class="btn btn-secondary" onclick="toggleForm()">CANCEL</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="flex-between mb-2">
+                <h2>REGISTERED CLIENTS</h2>
+                <button class="btn btn-accent" onclick="toggleForm()">REGISTER NEW</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>NAME</th>
+                            <th>CONTACT</th>
+                            <th>EMAIL</th>
+                            <th>ACTIONS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customers-list"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+        
+        function toggleForm() {
+            const form = document.getElementById('add-form');
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function loadCustomers() {
+            try {
+                const customers = await api.get('/customers');
+                const tbody = document.getElementById('customers-list');
+                tbody.innerHTML = customers.map(c => `
+                    <tr>
+                        <td>CL-${c.id}</td>
+                        <td style="color: var(--primary); font-weight: bold;">${c.name}</td>
+                        <td>${c.phone || 'N/A'}</td>
+                        <td>${c.email || 'N/A'}</td>
+                        <td><button class="btn btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;" onclick="deleteCustomer(${c.id})">DEL</button></td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                utils.showToast('Failed to load clients', 'error');
+            }
+        }
+
+        async function saveCustomer() {
+            const data = {
+                name: document.getElementById('c-name').value,
+                phone: document.getElementById('c-phone').value,
+                email: document.getElementById('c-email').value,
+                address: document.getElementById('c-address').value
+            };
+            if(!data.name) return utils.showToast('Name is required', 'error');
+
+            try {
+                await api.post('/customers', data);
+                utils.showToast('Client Registered');
+                toggleForm();
+                loadCustomers();
+            } catch(e) { utils.showToast('Error registering client', 'error'); }
+        }
+
+        async function deleteCustomer(id) {
+            if(confirm('Purge client record?')) {
+                try {
+                    await api.delete(`/customers/${id}`);
+                    utils.showToast('Client Purged');
+                    loadCustomers();
+                } catch(e) { utils.showToast('Error', 'error'); }
+            }
+        }
+
+        loadCustomers();
+    </script>
+</body>
+</html>

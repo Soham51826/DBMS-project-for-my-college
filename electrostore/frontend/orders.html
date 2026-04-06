@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElectroStore - Orders</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="brand">ELECTRO<span>STORE</span></div>
+        <ul class="nav-links">
+            <li><a href="dashboard.html">Dashboard</a></li>
+            <li><a href="products.html">Products</a></li>
+            <li><a href="inventory.html">Inventory</a></li>
+            <li><a href="orders.html" class="active">Orders</a></li>
+            <li><a href="customers.html">Customers</a></li>
+            <li><a href="suppliers.html">Suppliers</a></li>
+            <li><a href="reports.html">Reports</a></li>
+            <li><a href="#" onclick="logout()" style="color:var(--secondary);margin-top:2rem;">Logout</a></li>
+        </ul>
+    </aside>
+    
+    <main class="main-content">
+        <div class="flex-between mb-2">
+            <h1>ORDER LOGS</h1>
+            <a href="add-order.html" class="btn">CREATE NEW ORDER</a>
+        </div>
+
+        <div class="card">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ORDER ID</th>
+                            <th>DATE</th>
+                            <th>CUSTOMER</th>
+                            <th>TOTAL AMOUNT</th>
+                            <th>STATUS</th>
+                            <th>OPERATOR</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-list"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+
+        async function loadOrders() {
+            try {
+                const orders = await api.get('/orders');
+                const tbody = document.getElementById('orders-list');
+                tbody.innerHTML = orders.map(o => `
+                    <tr>
+                        <td style="font-family: 'Orbitron', sans-serif; color: var(--primary);">#ORD-${o.id}</td>
+                        <td>${utils.formatDate(o.order_date)}</td>
+                        <td>${o.customer_name || 'Walk-in Customer'}</td>
+                        <td style="font-weight:bold;">${utils.formatCurrency(o.total_amount)}</td>
+                        <td><span class="badge badge-success">${o.status}</span></td>
+                        <td>${o.user_name || 'System'}</td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                utils.showToast('Failed to load orders', 'error');
+            }
+        }
+
+        loadOrders();
+    </script>
+</body>
+</html>

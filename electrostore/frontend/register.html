@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElectroStore - Register</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body { margin: 0; justify-content: center; align-items: center; }
+        .login-container { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .login-box { width: 400px; max-width: 90%; text-align: center; }
+    </style>
+</head>
+<body>
+    <main class="login-container">
+        <div class="card login-box">
+            <div class="brand mb-2">ELECTRO<span>STORE</span></div>
+            <h2>REQUEST ACCESS</h2>
+            <form id="registerForm">
+                <div class="form-group text-left">
+                    <label>USERNAME</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="form-group text-left">
+                    <label>EMAIL</label>
+                    <input type="email" id="email" required>
+                </div>
+                <div class="form-group text-left">
+                    <label>PASSWORD</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" class="btn" style="width: 100%;">REGISTER IDENTITY</button>
+            </form>
+            <p class="mt-2 text-muted">Already registered? <a href="index.html">Login</a></p>
+        </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const u = document.getElementById('username').value;
+            const e_m = document.getElementById('email').value;
+            const p = document.getElementById('password').value;
+            try {
+                await api.post('/users/register', { username: u, email: e_m, password: p });
+                utils.showToast('Identity Registered');
+                setTimeout(() => window.location.href = 'index.html', 1000);
+            } catch (err) {
+                utils.showToast('Registration failed', 'error');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElectroStore - Products</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="brand">ELECTRO<span>STORE</span></div>
+        <ul class="nav-links">
+            <li><a href="dashboard.html">Dashboard</a></li>
+            <li><a href="products.html" class="active">Products</a></li>
+            <li><a href="inventory.html">Inventory</a></li>
+            <li><a href="orders.html">Orders</a></li>
+            <li><a href="customers.html">Customers</a></li>
+            <li><a href="suppliers.html">Suppliers</a></li>
+            <li><a href="reports.html">Reports</a></li>
+            <li><a href="#" onclick="logout()" style="color:var(--secondary);margin-top:2rem;">Logout</a></li>
+        </ul>
+    </aside>
+    
+    <main class="main-content">
+        <div class="flex-between mb-2">
+            <h1>PRODUCT DATABASE</h1>
+            <a href="add-product.html" class="btn">Add Product</a>
+        </div>
+
+        <div class="card mb-2">
+            <div class="flex-between gap-1">
+                <input type="text" id="search" placeholder="Search SKU or Name..." style="flex:2;">
+                <select id="categoryFilter" style="flex:1;">
+                    <option value="">All Categories</option>
+                    <option value="Laptops">Laptops</option>
+                    <option value="Monitors">Monitors</option>
+                    <option value="Accessories">Accessories</option>
+                </select>
+                <button class="btn" onclick="loadProducts()">FILTER</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>SKU</th>
+                            <th>NAME</th>
+                            <th>CATEGORY</th>
+                            <th>PRICE</th>
+                            <th>STOCK</th>
+                            <th>ACTIONS</th>
+                        </tr>
+                    </thead>
+                    <tbody id="product-list"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="js/api.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+
+        async function loadProducts() {
+            const search = document.getElementById('search').value;
+            const cat = document.getElementById('categoryFilter').value;
+            let url = '/products?';
+            if (search) url += `search=${search}&`;
+            if (cat) url += `category=${cat}`;
+
+            try {
+                const products = await api.get(url);
+                const tbody = document.getElementById('product-list');
+                tbody.innerHTML = products.map(p => `
+                    <tr>
+                        <td style="font-family: 'Orbitron', sans-serif; color: var(--primary);">${p.sku}</td>
+                        <td>${p.name}</td>
+                        <td><span class="badge badge-warning">${p.category}</span></td>
+                        <td>${utils.formatCurrency(p.price)}</td>
+                        <td>${p.stock <= p.min_stock_level ? `<span class="badge badge-danger">${p.stock} (LOW)</span>` : p.stock}</td>
+                        <td>
+                            <button class="btn btn-secondary" onclick="deleteProduct(${p.id})" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">DEL</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                utils.showToast('Failed to load products', 'error');
+            }
+        }
+
+        async function deleteProduct(id) {
+            if(confirm('Are you sure you want to purge this product?')) {
+                try {
+                    await api.delete(`/products/${id}`);
+                    utils.showToast('Product purged');
+                    loadProducts();
+                } catch(e) { utils.showToast('Error purging product', 'error'); }
+            }
+        }
+
+        loadProducts();
+    </script>
+</body>
+</html>
