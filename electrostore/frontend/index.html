@@ -45,7 +45,8 @@
                 utils.showToast('Access Granted');
                 setTimeout(() => window.location.href = 'dashboard.html', 1000);
             } catch (err) {
-                utils.showToast('Access Denied: Invalid credentials', 'error');
+                // If the error has a message from the server, show it, otherwise show default
+                utils.showToast(err.message || 'Access Denied: Invalid credentials', 'error');
             }
         });
     </script>
