@@ -1,6 +1,4 @@
  DROP DATABASE IF EXISTS electrostore;
-   2 CREATE DATABASE electrostore;
-   3 USE electrostore;
 
 CREATE DATABASE IF NOT EXISTS electrostore;
 USE electrostore;
