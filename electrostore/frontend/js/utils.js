@@ -15,15 +15,53 @@ const utils = {
     },
     checkAuth() {
         const token = localStorage.getItem('token');
+        const user = JSON.parse(localStorage.getItem('user'));
         const path = window.location.pathname;
-        if (!token && !path.includes('index.html') && !path.includes('register.html')) {
+        const isPublicPage = path.includes('index.html') || path.includes('register.html') || path.endsWith('/');
+        
+        if (!token && !isPublicPage) {
             window.location.href = 'index.html';
+            return;
+        }
+
+        if (user && !isPublicPage) {
+            // Role-based page access control
+            const adminOnlyPages = ['inventory.html', 'suppliers.html', 'reports.html'];
+            const isRestrictedPage = adminOnlyPages.some(p => path.includes(p));
+            
+            if (isRestrictedPage && user.role !== 'admin') {
+                this.showToast('Access Denied: Admin authorization required', 'error');
+                setTimeout(() => window.location.href = 'dashboard.html', 1500);
+                return;
+            }
+
+            this.restrictUI(user.role);
+        }
+    },
+    restrictUI(role) {
+        // Define which links are admin-only
+        const adminOnlyLinks = ['inventory.html', 'suppliers.html', 'reports.html'];
+        
+        const navLinks = document.querySelectorAll('.nav-links a');
+        navLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            if (role !== 'admin' && adminOnlyLinks.some(adminLink => href.includes(adminLink))) {
+                link.parentElement.style.display = 'none';
+            }
+        });
+
+        // Also restrict actions on pages if needed
+        if (role !== 'admin') {
+            const adminButtons = document.querySelectorAll('.admin-only');
+            adminButtons.forEach(btn => btn.style.display = 'none');
         }
     }
 };
 
-// Auto check auth on load
-utils.checkAuth();
+// Auto check auth on load when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    utils.checkAuth();
+});
 
 // Simple Toast CSS injection
 const style = document.createElement('style');

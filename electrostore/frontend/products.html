@@ -24,7 +24,7 @@
     <main class="main-content">
         <div class="flex-between mb-2">
             <h1>PRODUCT DATABASE</h1>
-            <a href="add-product.html" class="btn">Add Product</a>
+            <a href="add-product.html" class="btn admin-only">Add Product</a>
         </div>
 
         <div class="card mb-2">
@@ -72,6 +72,7 @@
             if (cat) url += `category=${cat}`;
 
             try {
+                const user = JSON.parse(localStorage.getItem('user'));
                 const products = await api.get(url);
                 const tbody = document.getElementById('product-list');
                 tbody.innerHTML = products.map(p => `
@@ -82,7 +83,9 @@
                         <td>${utils.formatCurrency(p.price)}</td>
                         <td>${p.stock <= p.min_stock_level ? `<span class="badge badge-danger">${p.stock} (LOW)</span>` : p.stock}</td>
                         <td>
-                            <button class="btn btn-secondary" onclick="deleteProduct(${p.id})" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">DEL</button>
+                            ${user.role === 'admin' ? 
+                                `<button class="btn btn-secondary" onclick="deleteProduct(${p.id})" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">DEL</button>` : 
+                                '<span class="text-muted" style="font-size:0.7rem;">NO ACCESS</span>'}
                         </td>
                     </tr>
                 `).join('');

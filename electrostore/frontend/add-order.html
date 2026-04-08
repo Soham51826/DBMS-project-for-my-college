@@ -175,10 +175,10 @@
 
             try {
                 await api.post('/orders', payload);
-                utils.showToast('Transaction Completed Successfully');
+                utils.showToast('Order Submitted for Approval');
                 setTimeout(() => window.location.href = 'orders.html', 1500);
             } catch (err) {
-                utils.showToast('Transaction Failed', 'error');
+                utils.showToast(err.message || 'Transaction Failed', 'error');
             }
         }
 

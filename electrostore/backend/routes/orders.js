@@ -39,11 +39,11 @@ router.post('/', async (req, res) => {
         // Insert order
         const [orderResult] = await db.query(
             'INSERT INTO Orders (customer_id, user_id, total_amount, status, payment_method) VALUES (?, ?, ?, ?, ?)',
-            [customer_id, user_id || 1, total_amount, 'completed', payment_method]
+            [customer_id, user_id || 1, total_amount, 'pending', payment_method]
         );
         const orderId = orderResult.insertId;
 
-        // Insert details and reduce stock
+        // Insert details (DO NOT reduce stock here anymore, only when accepted)
         for (const item of items) {
             const subtotal = item.quantity * item.unit_price;
             await db.query(
@@ -51,21 +51,53 @@ router.post('/', async (req, res) => {
                 [orderId, item.product_id, item.quantity, item.unit_price, subtotal]
             );
             
-            // Reduce stock
-            await db.query(
-                'UPDATE Products SET stock = stock - ? WHERE id = ?',
-                [item.quantity, item.product_id]
-            );
-
-            // Add log
-            await db.query(
-                'INSERT INTO Inventory_Log (product_id, user_id, change_type, quantity_changed, reason) VALUES (?, ?, ?, ?, ?)',
-                [item.product_id, user_id || 1, 'reduction', item.quantity, `Sold in Order #${orderId}`]
-            );
+            // REMOVED stock reduction from here - it should happen when admin ACCEPTS the order
         }
 
         await db.query('COMMIT');
         res.json({ success: true, orderId });
+    } catch (err) {
+        await db.query('ROLLBACK');
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Update order status (Accept/Cancel)
+router.put('/:id/status', async (req, res) => {
+    const { status, user_id } = req.body;
+    const orderId = req.params.id;
+
+    try {
+        await db.query('START TRANSACTION');
+
+        // Get current order status
+        const [orders] = await db.query('SELECT status FROM Orders WHERE id = ?', [orderId]);
+        if (orders.length === 0) return res.status(404).json({ error: 'Order not found' });
+        
+        const oldStatus = orders[0].status;
+
+        // If transitioning to 'completed' (Accepted), reduce stock
+        if (status === 'completed' && oldStatus !== 'completed') {
+            const [items] = await db.query('SELECT product_id, quantity FROM Order_Details WHERE order_id = ?', [orderId]);
+            for (const item of items) {
+                // Check stock before reducing
+                const [product] = await db.query('SELECT stock FROM Products WHERE id = ?', [item.product_id]);
+                if (product[0].stock < item.quantity) {
+                    throw new Error(`Insufficient stock for product ID ${item.product_id}`);
+                }
+
+                await db.query('UPDATE Products SET stock = stock - ? WHERE id = ?', [item.quantity, item.product_id]);
+                await db.query(
+                    'INSERT INTO Inventory_Log (product_id, user_id, change_type, quantity_changed, reason) VALUES (?, ?, ?, ?, ?)',
+                    [item.product_id, user_id || 1, 'reduction', item.quantity, `Order #${orderId} Accepted`]
+                );
+            }
+        }
+
+        await db.query('UPDATE Orders SET status = ? WHERE id = ?', [status, orderId]);
+        
+        await db.query('COMMIT');
+        res.json({ success: true });
     } catch (err) {
         await db.query('ROLLBACK');
         res.status(500).json({ error: err.message });

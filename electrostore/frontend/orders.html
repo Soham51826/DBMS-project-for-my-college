@@ -38,6 +38,7 @@
                             <th>TOTAL AMOUNT</th>
                             <th>STATUS</th>
                             <th>OPERATOR</th>
+                            <th>ACTIONS</th>
                         </tr>
                     </thead>
                     <tbody id="orders-list"></tbody>
@@ -53,6 +54,7 @@
 
         async function loadOrders() {
             try {
+                const user = JSON.parse(localStorage.getItem('user'));
                 const orders = await api.get('/orders');
                 const tbody = document.getElementById('orders-list');
                 tbody.innerHTML = orders.map(o => `
@@ -61,12 +63,31 @@
                         <td>${utils.formatDate(o.order_date)}</td>
                         <td>${o.customer_name || 'Walk-in Customer'}</td>
                         <td style="font-weight:bold;">${utils.formatCurrency(o.total_amount)}</td>
-                        <td><span class="badge badge-success">${o.status}</span></td>
+                        <td>
+                            <span class="badge ${o.status === 'pending' ? 'badge-warning' : 'badge-success'}">${o.status.toUpperCase()}</span>
+                        </td>
                         <td>${o.user_name || 'System'}</td>
+                        <td>
+                            ${(o.status === 'pending' && user.role === 'admin') ? 
+                                `<button onclick="acceptOrder(${o.id})" class="btn" style="padding: 0.2rem 0.5rem; font-size: 0.8rem;">ACCEPT</button>` : 
+                                ''}
+                        </td>
                     </tr>
                 `).join('');
             } catch (err) {
                 utils.showToast('Failed to load orders', 'error');
+            }
+        }
+
+        async function acceptOrder(id) {
+            if(!confirm('Accept this order and reduce stock?')) return;
+            try {
+                const user = JSON.parse(localStorage.getItem('user'));
+                await api.put(`/orders/${id}/status`, { status: 'completed', user_id: user.id });
+                utils.showToast('Order Accepted');
+                loadOrders();
+            } catch (err) {
+                utils.showToast(err.message || 'Failed to accept order', 'error');
             }
         }
 
