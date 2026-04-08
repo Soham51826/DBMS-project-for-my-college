@@ -1,1 +1,1 @@
-# DBMS-project-for-my-college
+C096_C120_C124_DBMSProject
